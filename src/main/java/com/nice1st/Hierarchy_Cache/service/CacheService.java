@@ -31,11 +31,11 @@ public class CacheService {
 		return tenantId + ":group";
 	}
 
-	public String getChildrenKey(String tenantId, String groupId) {
+	private String getChildrenKey(String tenantId, String groupId) {
 		return getPrefixKey(tenantId) + groupId + ":children";
 	}
 
-	public String getParentsKey(String tenantId, String groupId) {
+	private String getParentsKey(String tenantId, String groupId) {
 		return getPrefixKey(tenantId) + groupId + ":parents";
 	}
 
@@ -49,7 +49,7 @@ public class CacheService {
 
 		for (VO vo : voMap.values()) {
 			delete(tenantId, vo.getId());
-			append(tenantId, vo.getId(), vo.getParents(), vo.getChildren());
+			add(tenantId, vo.getId(), vo.getParents(), vo.getChildren());
 		}
 	}
 
@@ -63,7 +63,7 @@ public class CacheService {
 		  });
 	}
 
-	private void append(String tenantId, String groupId, Set<String> parents, Set<String> children) {
+	private void add(String tenantId, String groupId, Set<String> parents, Set<String> children) {
 		if (!parents.isEmpty()) {
 			redisTemplate.opsForSet().add(getParentsKey(tenantId, groupId), parents.toArray(new String[0]));
 		}
@@ -73,12 +73,24 @@ public class CacheService {
 		}
 	}
 
-	private void remove(String tenantId, String parentId, String groupId) {
-		redisTemplate.opsForSet().remove(getChildrenKey(tenantId, parentId), groupId);
+	private void removeParents(String tenantId, String parentId, Set<String> parents) {
+		redisTemplate.opsForSet().remove(getParentsKey(tenantId, parentId), parents.toArray(new Object[0]));
+	}
+
+	private void removeChildren(String tenantId, String parentId, Set<String> children) {
+		redisTemplate.opsForSet().remove(getChildrenKey(tenantId, parentId), children.toArray(new Object[0]));
 	}
 
 	private void delete(String tenantId, String groupId) {
+		deleteParents(tenantId, groupId);
+		deleteChildren(tenantId, groupId);
+	}
+
+	private void deleteParents(String tenantId, String groupId) {
 		redisTemplate.delete(getParentsKey(tenantId, groupId));
+	}
+
+	private void deleteChildren(String tenantId, String groupId) {
 		redisTemplate.delete(getChildrenKey(tenantId, groupId));
 	}
 
@@ -93,21 +105,49 @@ public class CacheService {
 
 	public void deleteGroup(String tenantId, String groupId) {
 		VO vo = find(tenantId, groupId);
-		vo.getParents().forEach(parentId -> remove(tenantId, parentId, groupId));
+		vo.getParents().forEach(parentId -> removeChildren(tenantId, parentId, Collections.singleton(groupId)));
 		delete(tenantId, groupId);
 	}
 
 	public void insertGroup(String tenantId, String parentId, String id) {
 		VO parent = find(tenantId, parentId);
 		VO insertVO = VO.fromParent(parent, id);
-		append(tenantId, id, insertVO.getParents(), parent.getChildren());
-		append(tenantId, parent.getId(), Collections.emptySet(), Collections.singleton(id));
+		deleteParents(tenantId, id);
+		add(tenantId, id, insertVO.getParents(), parent.getChildren());
+		add(tenantId, parent.getId(), Collections.emptySet(), Collections.singleton(id));
 		for (String grandparentId : parent.getParents()) {
-			append(tenantId, grandparentId, Collections.emptySet(), Collections.singleton(id));
+			add(tenantId, grandparentId, Collections.emptySet(), Collections.singleton(id));
 		}
 	}
 
-	public void update(String tenantId, String targetId, String newParentId) {
+	public void moveGroup(String tenantId, String targetId, String newParentId) {
+		VO target = find(tenantId, targetId);
+		VO parent = find(tenantId, newParentId);
+		// 이전 parents 의 children 제거
+		for (String parentId : target.getParents()) {
+			removeChildren(tenantId, parentId, Collections.singleton(target.getId()));
+			removeChildren(tenantId, parentId, target.getChildren());
+		}
+		// parents 제거
+		removeParents(tenantId, targetId, target.getParents());
+		// children 의 parents 제거
+		for (String childId : target.getChildren()) {
+			removeParents(tenantId, childId, target.getParents());
+		}
+		// 객체 부모 변경
+		target.changeParent(parent);
+		// 현 parents 추가
+		add(tenantId, targetId, target.getParents(), Collections.emptySet());
+		// children 에 parents 추가
+		for (String childId : target.getChildren()) {
+			add(tenantId, childId, target.getParents(), Collections.emptySet());
+		}
+		// 현 parents 에 children 추가
+		for (String parentId : target.getParents()) {
+			add(tenantId, parentId, Collections.emptySet(), Collections.singleton(target.getId()));
+			add(tenantId, parentId, Collections.emptySet(), target.getChildren());
+		}
+
 		Set<String> oldParents = redisTemplate.opsForSet().members(getParentsKey(tenantId, targetId));
 		if (oldParents != null) {
 			for (String oldParentId : oldParents) {
@@ -153,6 +193,12 @@ public class CacheService {
 			for (String parent : parents) {
 				voFunction.apply(parent).addChild(childId, voFunction);
 			}
+		}
+
+		public void changeParent(VO parent) {
+			parents.clear();
+			parents.add(parent.getId());
+			parents.addAll(parent.getParents());
 		}
 	}
 }

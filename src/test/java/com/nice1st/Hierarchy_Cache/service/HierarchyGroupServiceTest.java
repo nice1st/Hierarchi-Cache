@@ -30,7 +30,7 @@ class HierarchyGroupServiceTest {
 	}
 
 	@Test
-	@Disabled
+	// @Disabled
 	void recursiveIds() {
 		Set<String> ids = hierarchyGroupService.recursiveIds(ROOT_ID);
 		assertion(ids);
