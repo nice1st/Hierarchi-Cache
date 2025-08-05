@@ -41,47 +41,58 @@ public class HierarchyGroupReadService {
 		}
 
 		try {
-			String cursorKey = cacheService.getCursorKey(tenantId);
-			String cursor = Optional.ofNullable(redisTemplate.opsForValue().get(cursorKey)).orElse("0");
-
+			String cursor = getCursor(tenantId);
 			List<HierarchyGroupEvent> events = eventRepository.findByIdGreaterThanOrderById(Long.parseLong(cursor));
+
 			if (events.isEmpty()) {
-				boolean isValid = validationCount(tenantId);
-				if (!isValid) {
+				if (!validateCount(tenantId)) {
 					// todo cacheService.initialize();
 				}
 			} else {
-				for (HierarchyGroupEvent event : events) {
-					Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
-					boolean isValid = validationParent(parents, event);
-					if (!isValid) {
-						// todo cacheService.initialize();
-						break;
-					}
-
-					boolean isCached = compareParent(parents, event);
-					if (isCached) {
-						continue;
-					}
-
-					applyEventToCache(tenantId, event);
-				}
-				redisTemplate.opsForValue().set(cursorKey, String.valueOf(events.getLast().getId()));
+				processEvents(events, tenantId);
+				updateCursor(tenantId, events.getLast().getId());
 			}
 
 			return cacheService.getChildren(tenantId, groupId);
 		} finally {
-			// 6. 락 해제
 			redisLockHelper.unlock(lockKey);
 		}
 	}
 
-	private boolean validationCount(String tenantId) {
+	private String getCursor(String tenantId) {
+		String cursorKey = cacheService.getCursorKey(tenantId);
+		return Optional.ofNullable(redisTemplate.opsForValue().get(cursorKey)).orElse("0");
+	}
+
+	private boolean validateCount(String tenantId) {
 		int countWithRoot = groupRepository.countByTenantId(tenantId);
 		HierarchyGroup rootGroup = groupRepository.findByTenantIdAndParentIsNull(tenantId);
 		int cachedCount = cacheService.getChildren(tenantId, rootGroup.getId()).size();
 
 		return (countWithRoot - 1) == cachedCount;
+	}
+
+	private void processEvents(List<HierarchyGroupEvent> events, String tenantId) {
+		for (HierarchyGroupEvent event : events) {
+			Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
+			boolean isValid = validationParent(parents, event);
+			if (!isValid) {
+				// todo cacheService.initialize();
+				break;
+			}
+
+			boolean isCached = compareParent(parents, event);
+			if (isCached) {
+				continue;
+			}
+
+			applyEventToCache(tenantId, event);
+		}
+	}
+
+	private void updateCursor(String tenantId, Long tsid) {
+		String cursorKey = cacheService.getCursorKey(tenantId);
+		redisTemplate.opsForValue().set(cursorKey, String.valueOf(tsid));
 	}
 
 	private boolean validationParent(Set<String> parents, HierarchyGroupEvent event) {
@@ -105,10 +116,13 @@ public class HierarchyGroupReadService {
 		switch (type) {
 			case CREATE:
 				cacheService.createGroup(tenantId, event.getTargetId(), event.getToId());
+				break;
 			case UPDATE:
 				cacheService.moveGroup(tenantId, event.getTargetId(), event.getToId());
+				break;
 			case DELETE:
 				cacheService.deleteGroup(tenantId, event.getTargetId());
+				break;
 		}
 	}
 }
