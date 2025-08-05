@@ -82,7 +82,7 @@ class CacheServiceTest {
 
 	String insert() {
 		final String ID = "test_id";
-		cacheService.insertGroup(TENANT_ID, DEPTH2_ID, ID);
+		cacheService.createGroup(TENANT_ID, DEPTH2_ID, ID);
 
 		Set<String> parents = cacheService.getParents(TENANT_ID, ID);
 		assertThat(parents).hasSizeGreaterThanOrEqualTo(1);

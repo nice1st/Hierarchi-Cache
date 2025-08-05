@@ -10,7 +10,11 @@ import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 @Repository
 public interface HierarchyGroupRepository extends JpaRepository<HierarchyGroup, String> {
 
+	HierarchyGroup findByTenantIdAndParentIsNull(String tenantId);
+
 	List<HierarchyGroup> findByTenantId(String tenantId);
 
 	List<HierarchyGroup> findByParent(HierarchyGroup parent);
+
+	int countByTenantId(String tenantId);
 }

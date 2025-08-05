@@ -34,4 +34,20 @@ public class HierarchyGroupEvent {
 			id = Tsid.fast().toLong();
 		}
 	}
+
+	public EventType getType() {
+		if (fromId == null) {
+			return EventType.CREATE;
+		}
+
+		if (toId == null) {
+			return EventType.DELETE;
+		}
+
+		return EventType.UPDATE;
+	}
+
+	public enum EventType {
+		CREATE, DELETE, UPDATE
+	}
 }

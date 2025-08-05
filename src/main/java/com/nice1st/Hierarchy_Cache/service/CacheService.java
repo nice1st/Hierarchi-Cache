@@ -27,6 +27,10 @@ public class CacheService {
 
 	public static final String ROOT_GROUP = "ROOT_GROUP";
 
+	public String getCursorKey(String tenantId) {
+		return tenantId + ":group:cursor";
+	}
+
 	private String getPrefixKey(String tenantId) {
 		return tenantId + ":group";
 	}
@@ -109,7 +113,7 @@ public class CacheService {
 		delete(tenantId, groupId);
 	}
 
-	public void insertGroup(String tenantId, String parentId, String id) {
+	public void createGroup(String tenantId, String parentId, String id) {
 		VO parent = find(tenantId, parentId);
 		VO insertVO = VO.fromParent(parent, id);
 		deleteParents(tenantId, id);
