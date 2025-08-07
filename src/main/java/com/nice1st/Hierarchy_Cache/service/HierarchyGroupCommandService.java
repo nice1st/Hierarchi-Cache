@@ -18,7 +18,7 @@ public class HierarchyGroupCommandService {
 	private final HierarchyGroupEventRepository eventRepository;
 
 	@Transactional
-	public HierarchyGroup generate(String parentId) {
+	public HierarchyGroup create(String parentId) {
 		HierarchyGroup parent = repository.findById(parentId)
 		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 

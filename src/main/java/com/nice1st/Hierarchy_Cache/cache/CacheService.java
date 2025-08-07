@@ -25,4 +25,6 @@ public interface CacheService {
 	Set<String> getParents(String tenantId, String groupId);
 
 	Set<String> getChildren(String tenantId, String groupId);
+
+	boolean hasCached(String tenantId, String groupId);
 }

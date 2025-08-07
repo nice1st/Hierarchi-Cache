@@ -120,7 +120,7 @@ class RedisCacheServiceTest {
 		children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
 		assertThat(children).contains(DEPTH3_ID);
 
-		cacheService.moveGroup(TENANT_ID, DEPTH2_ID, DEPTH1_ID2);
+		cacheService.moveGroup(TENANT_ID, DEPTH1_ID2, DEPTH2_ID);
 		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
 		assertThat(children).doesNotContain(DEPTH3_ID);
 

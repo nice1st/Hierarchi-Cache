@@ -102,15 +102,12 @@ public class HierarchyGroupReadService {
 
 			String cursor = cacheService.getCursor(tenantId);
 			List<HierarchyGroupEvent> events = eventRepository.findByIdGreaterThanOrderById(Long.parseLong(cursor));
-
-			if (events.isEmpty()) {
-				if (!validateCount(tenantId)) {
-					cacheInitialize(tenantId);
-				}
+			if (!hasInitialized(tenantId)) {
+				cacheInitialize(tenantId);
 			} else {
 				processEvents(events, tenantId);
-				cacheService.updateCursor(tenantId, events.getLast().getId());
 			}
+			updateCursor(tenantId, events);
 
 			return cacheService.getChildren(tenantId, groupId);
 		} catch (Exception e) {
@@ -121,12 +118,9 @@ public class HierarchyGroupReadService {
 		}
 	}
 
-	private boolean validateCount(String tenantId) {
-		int countWithRoot = repository.countByTenantId(tenantId);
+	private boolean hasInitialized(String tenantId) {
 		HierarchyGroup rootGroup = repository.findByTenantIdAndParentIsNull(tenantId);
-		int cachedCount = cacheService.getChildren(tenantId, rootGroup.getId()).size();
-
-		return (countWithRoot - 1) == cachedCount;
+		return cacheService.hasCached(tenantId, rootGroup.getId());
 	}
 
 	private void cacheInitialize(String tenantId) {
@@ -135,14 +129,13 @@ public class HierarchyGroupReadService {
 
 	private void processEvents(List<HierarchyGroupEvent> events, String tenantId) {
 		for (HierarchyGroupEvent event : events) {
-			Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
-			boolean isValid = validationParent(parents, event);
-			if (!isValid) {
+			boolean hasParent = cacheService.hasCached(tenantId, event.getToId());
+			if (!hasParent) {
 				cacheInitialize(tenantId);
 				break;
 			}
 
-			boolean isCached = compareParent(parents, event);
+			boolean isCached = compareParent(tenantId, event);
 			if (isCached) {
 				continue;
 			}
@@ -151,15 +144,14 @@ public class HierarchyGroupReadService {
 		}
 	}
 
-	private boolean validationParent(Set<String> parents, HierarchyGroupEvent event) {
-		HierarchyGroupEvent.EventType type = event.getType();
-		return switch (type) {
-			case CREATE -> parents.isEmpty();
-			case UPDATE, DELETE -> parents.contains(event.getFromId());
-		};
+	private void updateCursor(String tenantId, List<HierarchyGroupEvent> events) {
+		if (!events.isEmpty()) {
+			cacheService.updateCursor(tenantId, events.getLast().getId());
+		}
 	}
 
-	private boolean compareParent(Set<String> parents, HierarchyGroupEvent event) {
+	private boolean compareParent(String tenantId, HierarchyGroupEvent event) {
+		Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
 		HierarchyGroupEvent.EventType type = event.getType();
 		return switch (type) {
 			case CREATE, UPDATE -> parents.contains(event.getToId());
@@ -171,10 +163,10 @@ public class HierarchyGroupReadService {
 		HierarchyGroupEvent.EventType type = event.getType();
 		switch (type) {
 			case CREATE:
-				cacheService.createGroup(tenantId, event.getTargetId(), event.getToId());
+				cacheService.createGroup(tenantId, event.getToId(), event.getTargetId());
 				break;
 			case UPDATE:
-				cacheService.moveGroup(tenantId, event.getTargetId(), event.getToId());
+				cacheService.moveGroup(tenantId, event.getToId(), event.getTargetId());
 				break;
 			case DELETE:
 				cacheService.deleteGroup(tenantId, event.getTargetId());
