@@ -148,11 +148,12 @@ public class HierarchyGroupService {
 		String tenantId = group.getTenantId();
 		String lockKey = cacheService.getLockKey(tenantId);
 		boolean locked = cacheService.tryLock(lockKey, Duration.ofMinutes(1), Duration.ofSeconds(30));
-		if (!locked) {
-			return reBuild(groupId);
-		}
 
 		try {
+			if (!locked) {
+				throw new RuntimeException("lock 획득 실패");
+			}
+
 			String cursor = cacheService.getCursor(tenantId);
 			List<HierarchyGroupEvent> events = eventRepository.findByIdGreaterThanOrderById(Long.parseLong(cursor));
 
@@ -166,6 +167,9 @@ public class HierarchyGroupService {
 			}
 
 			return cacheService.getChildren(tenantId, groupId);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return reBuild(groupId);
 		} finally {
 			cacheService.unlock(lockKey);
 		}
