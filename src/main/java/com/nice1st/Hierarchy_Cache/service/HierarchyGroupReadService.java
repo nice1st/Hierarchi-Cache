@@ -29,6 +29,10 @@ public class HierarchyGroupReadService {
 	private final CacheService cacheService;
 	private final LockService lockService;
 
+	public long countByTenantId(String tenantId) {
+		return repository.countByTenantId(tenantId);
+	}
+
 	public Set<String> recursiveIds(String groupId) {
 		Set<String> ids = new HashSet<>();
 

@@ -55,10 +55,10 @@ class RedisCacheServiceTest {
 	}
 
 	boolean hasCached() {
-		Map<String, List<HierarchyGroup>> byTenantId = hierarchyGroupReadService.getGroupedByParent(TENANT_ID);
+		long count = hierarchyGroupReadService.countByTenantId(TENANT_ID);
 		Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
 
-		return children != null && children.size() == (byTenantId.get(ROOT_GROUP_ID).size() - 1);
+		return children != null && children.size() == (count - 1);
 	}
 
 	@BeforeEach

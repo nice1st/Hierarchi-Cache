@@ -45,10 +45,8 @@ class HierarchyGroupReadServiceTest {
 
 	@Test
 	void cache() {
-		Set<String> ids = new HashSet<>();
-
+		Set<String> ids = hierarchyGroupReadService.read(ROOT_ID);
 		ids.add(ROOT_ID);
-		ids.addAll(cacheService.getChildren(TENANT_ID, ROOT_ID));
 
 		assertion(ids);
 	}
