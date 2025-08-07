@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nice1st.Hierarchy_Cache.cache.CacheService;
+import com.nice1st.Hierarchy_Cache.cache.LockService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroupEvent;
 import com.nice1st.Hierarchy_Cache.repository.HierarchyGroupEventRepository;
@@ -21,15 +22,12 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class HierarchyGroupService {
+public class HierarchyGroupReadService {
 
 	private final HierarchyGroupRepository repository;
 	private final HierarchyGroupEventRepository eventRepository;
 	private final CacheService cacheService;
-
-	public List<HierarchyGroup> findByTenantId(String tenantId) {
-		return repository.findByTenantId(tenantId);
-	}
+	private final LockService lockService;
 
 	public Set<String> recursiveIds(String groupId) {
 		Set<String> ids = new HashSet<>();
@@ -66,7 +64,7 @@ public class HierarchyGroupService {
 	}
 
 	public Map<String, List<HierarchyGroup>> getGroupedByParent(String tenantId) {
-		List<HierarchyGroup> allHierarchyGroups = findByTenantId(tenantId);
+		List<HierarchyGroup> allHierarchyGroups = repository.findByTenantId(tenantId);
 		return groupByParent(allHierarchyGroups);
 	}
 
@@ -84,70 +82,14 @@ public class HierarchyGroupService {
 		});
 	}
 
-	@Transactional
-	public HierarchyGroup generate(String parentId) {
-		HierarchyGroup parent = repository.findById(parentId)
-		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
-
-		HierarchyGroup hierarchyGroup = repository.save(HierarchyGroup.newInstance(parent));
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.toId(hierarchyGroup.getParentId())
-			.build()
-		);
-
-		return hierarchyGroup;
-	}
-
-	@Transactional
-	public void remove(String id) {
-		HierarchyGroup hierarchyGroup = repository.findById(id)
-		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
-
-		repository.delete(hierarchyGroup);
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.fromId(hierarchyGroup.getParentId())
-			.build()
-		);
-	}
-
-	@Transactional
-	public HierarchyGroup move(String id, String parentId) {
-		HierarchyGroup hierarchyGroup = repository.findById(id)
-		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
-		HierarchyGroup parent = repository.findById(parentId)
-		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
-
-		String fromId = hierarchyGroup.getParentId();
-		hierarchyGroup.move(parent);
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.fromId(fromId)
-			.toId(hierarchyGroup.getParentId())
-			.build()
-		);
-		return hierarchyGroup;
-	}
-
-	public Set<String> cache(String parentId) {
-		HierarchyGroup parent = repository.findById(parentId)
-		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
-
-		return null;
-	}
-
 	@Transactional(readOnly = true)
 	public Set<String> read(String groupId) {
 		HierarchyGroup group = repository.findById(groupId)
 		  .orElseThrow(() -> new IllegalArgumentException("Group not found: " + groupId));
 
 		String tenantId = group.getTenantId();
-		String lockKey = cacheService.getLockKey(tenantId);
-		boolean locked = cacheService.tryLock(lockKey, Duration.ofMinutes(1), Duration.ofSeconds(30));
+		String lockKey = lockService.getLockKey(tenantId);
+		boolean locked = lockService.tryLock(lockKey, Duration.ofMinutes(1), Duration.ofSeconds(30));
 
 		try {
 			if (!locked) {
@@ -171,7 +113,7 @@ public class HierarchyGroupService {
 			e.printStackTrace();
 			return reBuild(groupId);
 		} finally {
-			cacheService.unlock(lockKey);
+			lockService.unlock(lockKey);
 		}
 	}
 

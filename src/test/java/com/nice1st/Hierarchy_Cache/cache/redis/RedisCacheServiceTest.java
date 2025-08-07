@@ -1,4 +1,4 @@
-package com.nice1st.Hierarchy_Cache.service;
+package com.nice1st.Hierarchy_Cache.cache.redis;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -14,8 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-import com.nice1st.Hierarchy_Cache.cache.RedisCacheService;
+import com.nice1st.Hierarchy_Cache.cache.CacheService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
+import com.nice1st.Hierarchy_Cache.service.HierarchyGroupReadService;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
@@ -25,10 +26,10 @@ class RedisCacheServiceTest {
 	private RedisConnectionFactory redisConnectionFactory;
 
 	@Autowired
-	RedisCacheService cacheService;
+	CacheService cacheService;
 
 	@Autowired
-	HierarchyGroupService hierarchyGroupService;
+	HierarchyGroupReadService hierarchyGroupReadService;
 
 	final String TENANT_ID = "tenant1";
 
@@ -49,15 +50,15 @@ class RedisCacheServiceTest {
 	}
 
 	void initialize() {
-		Map<String, List<HierarchyGroup>> groupedByParent = hierarchyGroupService.getGroupedByParent(TENANT_ID);
+		Map<String, List<HierarchyGroup>> groupedByParent = hierarchyGroupReadService.getGroupedByParent(TENANT_ID);
 		cacheService.initialize(TENANT_ID, groupedByParent);
 	}
 
 	boolean hasCached() {
-		List<HierarchyGroup> byTenantId = hierarchyGroupService.findByTenantId(TENANT_ID);
+		Map<String, List<HierarchyGroup>> byTenantId = hierarchyGroupReadService.getGroupedByParent(TENANT_ID);
 		Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
 
-		return children != null && children.size() == (byTenantId.size() - 1);
+		return children != null && children.size() == (byTenantId.get(ROOT_GROUP_ID).size() - 1);
 	}
 
 	@BeforeEach

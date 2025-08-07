@@ -1,19 +1,19 @@
-package com.nice1st.Hierarchy_Cache.cache;
+package com.nice1st.Hierarchy_Cache.cache.redis;
 
-import java.time.Duration;
+import static com.nice1st.Hierarchy_Cache.cache.redis.RedisCacheKeyUtil.*;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 
+import com.nice1st.Hierarchy_Cache.cache.CacheService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 
 import lombok.AllArgsConstructor;
@@ -21,7 +21,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-@Service
 @RequiredArgsConstructor
 public class RedisCacheService implements CacheService {
 
@@ -35,41 +34,6 @@ public class RedisCacheService implements CacheService {
 	}
 
 	@Override
-	public String getLockKey(String tenantId) {
-		return tenantId + ":group:lock";
-	}
-
-	@Override
-	public boolean tryLock(String key, Duration ttl, Duration maxWait) {
-		long startTime = System.currentTimeMillis();
-		while (System.currentTimeMillis() - startTime < maxWait.toMillis()) {
-			Boolean success = redisTemplate.opsForValue().setIfAbsent(key, Thread.currentThread().getName(), ttl);
-			if (Boolean.TRUE.equals(success)) {
-				return true;
-			}
-			try {
-				Thread.sleep(100); // 재시도 간격
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				return false;
-			}
-		}
-		return false;
-	}
-
-	@Override
-	public void unlock(String key) {
-		String currentValue = redisTemplate.opsForValue().get(key);
-		if (Objects.equals(currentValue, Thread.currentThread().getName())) {
-			redisTemplate.delete(key);
-		}
-	}
-
-	private String getCursorKey(String tenantId) {
-		return tenantId + ":group:cursor";
-	}
-
-	@Override
 	public String getCursor(String tenantId) {
 		String cursorKey = getCursorKey(tenantId);
 		return Optional.ofNullable(redisTemplate.opsForValue().get(cursorKey)).orElse("0");
@@ -79,18 +43,6 @@ public class RedisCacheService implements CacheService {
 	public void updateCursor(String tenantId, Long tsid) {
 		String cursorKey = getCursorKey(tenantId);
 		redisTemplate.opsForValue().set(cursorKey, String.valueOf(tsid));
-	}
-
-	private String getPrefixKey(String tenantId) {
-		return tenantId + ":group";
-	}
-
-	private String getChildrenKey(String tenantId, String groupId) {
-		return getPrefixKey(tenantId) + groupId + ":children";
-	}
-
-	private String getParentsKey(String tenantId, String groupId) {
-		return getPrefixKey(tenantId) + groupId + ":parents";
 	}
 
 	@Override

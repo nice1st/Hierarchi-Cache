@@ -1,6 +1,5 @@
 package com.nice1st.Hierarchy_Cache.cache;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,12 +9,6 @@ import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 public interface CacheService {
 
 	String getRootGroup();
-
-	String getLockKey(String tenantId);
-
-	boolean tryLock(String key, Duration ttl, Duration maxWait);
-
-	void unlock(String key);
 
 	String getCursor(String tenantId);
 

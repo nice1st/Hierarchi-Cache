@@ -9,16 +9,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.nice1st.Hierarchy_Cache.cache.RedisCacheService;
+import com.nice1st.Hierarchy_Cache.cache.CacheService;
 
 @SpringBootTest
-class HierarchyGroupServiceTest {
+class HierarchyGroupReadServiceTest {
 
 	@Autowired
-	HierarchyGroupService hierarchyGroupService;
+	HierarchyGroupReadService hierarchyGroupReadService;
 
 	@Autowired
-	RedisCacheService cacheService;
+	CacheService cacheService;
 
 	final String TENANT_ID = "tenant1";
 	final String ROOT_ID = "e1757bb8-8568-4135-8e67-778361b3329d";
@@ -33,13 +33,13 @@ class HierarchyGroupServiceTest {
 	@Test
 	// @Disabled
 	void recursiveIds() {
-		Set<String> ids = hierarchyGroupService.recursiveIds(ROOT_ID);
+		Set<String> ids = hierarchyGroupReadService.recursiveIds(ROOT_ID);
 		assertion(ids);
 	}
 
 	@Test
 	void reBuild() {
-		Set<String> ids = hierarchyGroupService.reBuild(ROOT_ID);
+		Set<String> ids = hierarchyGroupReadService.reBuild(ROOT_ID);
 		assertion(ids);
 	}
 
