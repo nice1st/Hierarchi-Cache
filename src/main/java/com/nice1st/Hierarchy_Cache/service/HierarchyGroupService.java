@@ -1,5 +1,6 @@
 package com.nice1st.Hierarchy_Cache.service;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.nice1st.Hierarchy_Cache.cache.CacheService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroupEvent;
 import com.nice1st.Hierarchy_Cache.repository.HierarchyGroupEventRepository;
@@ -21,17 +23,18 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HierarchyGroupService {
 
-	private final HierarchyGroupRepository hierarchyGroupRepository;
-	private final HierarchyGroupEventRepository hierarchyGroupEventRepository;
+	private final HierarchyGroupRepository repository;
+	private final HierarchyGroupEventRepository eventRepository;
+	private final CacheService cacheService;
 
 	public List<HierarchyGroup> findByTenantId(String tenantId) {
-		return hierarchyGroupRepository.findByTenantId(tenantId);
+		return repository.findByTenantId(tenantId);
 	}
 
 	public Set<String> recursiveIds(String parentId) {
 		Set<String> ids = new HashSet<>();
 
-		hierarchyGroupRepository.findById(parentId)
+		repository.findById(parentId)
 		  .ifPresent(hierarchyGroup -> {
 			  ids.add(hierarchyGroup.getId());
 			  recursiveIds(ids, hierarchyGroup);
@@ -41,7 +44,7 @@ public class HierarchyGroupService {
 	}
 
 	private void recursiveIds(Set<String> ids, HierarchyGroup parent) {
-		List<HierarchyGroup> byParentId = hierarchyGroupRepository.findByParent(parent);
+		List<HierarchyGroup> byParentId = repository.findByParent(parent);
 		for (HierarchyGroup child : byParentId) {
 			ids.add(child.getId());
 			recursiveIds(ids, child);
@@ -51,7 +54,7 @@ public class HierarchyGroupService {
 	public Set<String> reBuild(String parentId) {
 		Set<String> ids = new HashSet<>();
 
-		hierarchyGroupRepository.findById(parentId)
+		repository.findById(parentId)
 		  .ifPresent(hierarchyGroup -> {
 			  Map<String, List<HierarchyGroup>> map = getGroupedByParent(hierarchyGroup.getTenantId());
 
@@ -70,7 +73,7 @@ public class HierarchyGroupService {
 	private Map<String, List<HierarchyGroup>> groupByParent(List<HierarchyGroup> allHierarchyGroups) {
 		return allHierarchyGroups.stream()
 		  .collect(Collectors.groupingBy(hierarchyGroup ->
-			hierarchyGroup.getParent() != null ? hierarchyGroup.getParent().getId() : CacheService.ROOT_GROUP)
+			hierarchyGroup.getParent() != null ? hierarchyGroup.getParent().getId() : cacheService.getRootGroup())
 		  );
 	}
 
@@ -83,11 +86,11 @@ public class HierarchyGroupService {
 
 	@Transactional
 	public HierarchyGroup generate(String parentId) {
-		HierarchyGroup parent = hierarchyGroupRepository.findById(parentId)
+		HierarchyGroup parent = repository.findById(parentId)
 		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 
-		HierarchyGroup hierarchyGroup = hierarchyGroupRepository.save(HierarchyGroup.newInstance(parent));
-		hierarchyGroupEventRepository.save(
+		HierarchyGroup hierarchyGroup = repository.save(HierarchyGroup.newInstance(parent));
+		eventRepository.save(
 		  HierarchyGroupEvent.builder()
 			.targetId(hierarchyGroup.getId())
 			.toId(hierarchyGroup.getParentId())
@@ -99,11 +102,11 @@ public class HierarchyGroupService {
 
 	@Transactional
 	public void remove(String id) {
-		HierarchyGroup hierarchyGroup = hierarchyGroupRepository.findById(id)
+		HierarchyGroup hierarchyGroup = repository.findById(id)
 		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
 
-		hierarchyGroupRepository.delete(hierarchyGroup);
-		hierarchyGroupEventRepository.save(
+		repository.delete(hierarchyGroup);
+		eventRepository.save(
 		  HierarchyGroupEvent.builder()
 			.targetId(hierarchyGroup.getId())
 			.fromId(hierarchyGroup.getParentId())
@@ -113,14 +116,14 @@ public class HierarchyGroupService {
 
 	@Transactional
 	public HierarchyGroup move(String id, String parentId) {
-		HierarchyGroup hierarchyGroup = hierarchyGroupRepository.findById(id)
+		HierarchyGroup hierarchyGroup = repository.findById(id)
 		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
-		HierarchyGroup parent = hierarchyGroupRepository.findById(parentId)
+		HierarchyGroup parent = repository.findById(parentId)
 		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 
 		String fromId = hierarchyGroup.getParentId();
 		hierarchyGroup.move(parent);
-		hierarchyGroupEventRepository.save(
+		eventRepository.save(
 		  HierarchyGroupEvent.builder()
 			.targetId(hierarchyGroup.getId())
 			.fromId(fromId)
@@ -131,9 +134,98 @@ public class HierarchyGroupService {
 	}
 
 	public Set<String> cache(String parentId) {
-		HierarchyGroup parent = hierarchyGroupRepository.findById(parentId)
+		HierarchyGroup parent = repository.findById(parentId)
 		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 
 		return null;
+	}
+
+	@Transactional(readOnly = true)
+	public Set<String> read(String groupId) {
+		HierarchyGroup group = repository.findById(groupId)
+		  .orElseThrow(() -> new IllegalArgumentException("Group not found: " + groupId));
+
+		String tenantId = group.getTenantId();
+		String lockKey = cacheService.getLockKey(tenantId);
+		boolean locked = cacheService.tryLock(lockKey, Duration.ofMinutes(1), Duration.ofSeconds(30));
+		if (!locked) {
+			// todo legacy
+			throw new IllegalStateException("Another sync in progress for tenant: " + tenantId);
+		}
+
+		try {
+			String cursor = cacheService.getCursor(tenantId);
+			List<HierarchyGroupEvent> events = eventRepository.findByIdGreaterThanOrderById(Long.parseLong(cursor));
+
+			if (events.isEmpty()) {
+				if (!validateCount(tenantId)) {
+					// todo cacheService.initialize();
+				}
+			} else {
+				processEvents(events, tenantId);
+				cacheService.updateCursor(tenantId, events.getLast().getId());
+			}
+
+			return cacheService.getChildren(tenantId, groupId);
+		} finally {
+			cacheService.unlock(lockKey);
+		}
+	}
+
+	private boolean validateCount(String tenantId) {
+		int countWithRoot = repository.countByTenantId(tenantId);
+		HierarchyGroup rootGroup = repository.findByTenantIdAndParentIsNull(tenantId);
+		int cachedCount = cacheService.getChildren(tenantId, rootGroup.getId()).size();
+
+		return (countWithRoot - 1) == cachedCount;
+	}
+
+	private void processEvents(List<HierarchyGroupEvent> events, String tenantId) {
+		for (HierarchyGroupEvent event : events) {
+			Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
+			boolean isValid = validationParent(parents, event);
+			if (!isValid) {
+				// todo cacheService.initialize();
+				break;
+			}
+
+			boolean isCached = compareParent(parents, event);
+			if (isCached) {
+				continue;
+			}
+
+			applyEventToCache(tenantId, event);
+		}
+	}
+
+	private boolean validationParent(Set<String> parents, HierarchyGroupEvent event) {
+		HierarchyGroupEvent.EventType type = event.getType();
+		return switch (type) {
+			case CREATE -> parents.isEmpty();
+			case UPDATE, DELETE -> parents.contains(event.getFromId());
+		};
+	}
+
+	private boolean compareParent(Set<String> parents, HierarchyGroupEvent event) {
+		HierarchyGroupEvent.EventType type = event.getType();
+		return switch (type) {
+			case CREATE, UPDATE -> parents.contains(event.getToId());
+			case DELETE -> parents.isEmpty();
+		};
+	}
+
+	private void applyEventToCache(String tenantId, HierarchyGroupEvent event) {
+		HierarchyGroupEvent.EventType type = event.getType();
+		switch (type) {
+			case CREATE:
+				cacheService.createGroup(tenantId, event.getTargetId(), event.getToId());
+				break;
+			case UPDATE:
+				cacheService.moveGroup(tenantId, event.getTargetId(), event.getToId());
+				break;
+			case DELETE:
+				cacheService.deleteGroup(tenantId, event.getTargetId());
+				break;
+		}
 	}
 }

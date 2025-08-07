@@ -1,10 +1,12 @@
-package com.nice1st.Hierarchy_Cache.service;
+package com.nice1st.Hierarchy_Cache.cache;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -21,14 +23,62 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class CacheService {
+public class RedisCacheService implements CacheService {
 
 	private final RedisTemplate<String, String> redisTemplate;
 
-	public static final String ROOT_GROUP = "ROOT_GROUP";
+	private final String ROOT_GROUP = "ROOT_GROUP";
 
-	public String getCursorKey(String tenantId) {
+	@Override
+	public String getRootGroup() {
+		return ROOT_GROUP;
+	}
+
+	@Override
+	public String getLockKey(String tenantId) {
+		return tenantId + ":group:lock";
+	}
+
+	@Override
+	public boolean tryLock(String key, Duration ttl, Duration maxWait) {
+		long startTime = System.currentTimeMillis();
+		while (System.currentTimeMillis() - startTime < maxWait.toMillis()) {
+			Boolean success = redisTemplate.opsForValue().setIfAbsent(key, Thread.currentThread().getName(), ttl);
+			if (Boolean.TRUE.equals(success)) {
+				return true;
+			}
+			try {
+				Thread.sleep(100); // 재시도 간격
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return false;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public void unlock(String key) {
+		String currentValue = redisTemplate.opsForValue().get(key);
+		if (Objects.equals(currentValue, Thread.currentThread().getName())) {
+			redisTemplate.delete(key);
+		}
+	}
+
+	private String getCursorKey(String tenantId) {
 		return tenantId + ":group:cursor";
+	}
+
+	@Override
+	public String getCursor(String tenantId) {
+		String cursorKey = getCursorKey(tenantId);
+		return Optional.ofNullable(redisTemplate.opsForValue().get(cursorKey)).orElse("0");
+	}
+
+	@Override
+	public void updateCursor(String tenantId, Long tsid) {
+		String cursorKey = getCursorKey(tenantId);
+		redisTemplate.opsForValue().set(cursorKey, String.valueOf(tsid));
 	}
 
 	private String getPrefixKey(String tenantId) {
@@ -43,6 +93,7 @@ public class CacheService {
 		return getPrefixKey(tenantId) + groupId + ":parents";
 	}
 
+	@Override
 	public void initialize(String tenantId, Map<String, List<HierarchyGroup>> groupByParentId) {
 		Map<String, VO> voMap = new HashMap<>(20_000);
 		groupByParentId.get(ROOT_GROUP).forEach(rootGroup -> {
@@ -107,12 +158,14 @@ public class CacheService {
 		return VO.builder().id(groupId).parents(parents).children(children).build();
 	}
 
+	@Override
 	public void deleteGroup(String tenantId, String groupId) {
 		VO vo = find(tenantId, groupId);
 		vo.getParents().forEach(parentId -> removeChildren(tenantId, parentId, Collections.singleton(groupId)));
 		delete(tenantId, groupId);
 	}
 
+	@Override
 	public void createGroup(String tenantId, String parentId, String id) {
 		VO parent = find(tenantId, parentId);
 		VO insertVO = VO.fromParent(parent, id);
@@ -124,6 +177,7 @@ public class CacheService {
 		}
 	}
 
+	@Override
 	public void moveGroup(String tenantId, String targetId, String newParentId) {
 		VO target = find(tenantId, targetId);
 		VO parent = find(tenantId, newParentId);
@@ -164,10 +218,12 @@ public class CacheService {
 		redisTemplate.opsForSet().add(getChildrenKey(tenantId, newParentId), targetId);
 	}
 
+	@Override
 	public Set<String> getParents(String tenantId, String groupId) {
 		return redisTemplate.opsForSet().members(getParentsKey(tenantId, groupId));
 	}
 
+	@Override
 	public Set<String> getChildren(String tenantId, String groupId) {
 		return redisTemplate.opsForSet().members(getChildrenKey(tenantId, groupId));
 	}

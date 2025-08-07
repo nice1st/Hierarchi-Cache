@@ -7,8 +7,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import com.nice1st.Hierarchy_Cache.helper.RedisLockHelper;
-
 @Configuration
 public class RedisConfig {
 
@@ -21,10 +19,5 @@ public class RedisConfig {
 		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 
 		return template;
-	}
-
-	@Bean
-	public RedisLockHelper redisHelper(RedisTemplate<String, String> redisTemplate) {
-		return new RedisLockHelper(redisTemplate);
 	}
 }

@@ -14,17 +14,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
+import com.nice1st.Hierarchy_Cache.cache.RedisCacheService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
-class CacheServiceTest {
+class RedisCacheServiceTest {
 
 	@Autowired
 	private RedisConnectionFactory redisConnectionFactory;
 
 	@Autowired
-	CacheService cacheService;
+	RedisCacheService cacheService;
 
 	@Autowired
 	HierarchyGroupService hierarchyGroupService;

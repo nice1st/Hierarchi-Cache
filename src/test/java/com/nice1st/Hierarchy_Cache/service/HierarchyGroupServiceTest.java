@@ -5,10 +5,11 @@ import static org.assertj.core.api.Assertions.*;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import com.nice1st.Hierarchy_Cache.cache.RedisCacheService;
 
 @SpringBootTest
 class HierarchyGroupServiceTest {
@@ -17,7 +18,7 @@ class HierarchyGroupServiceTest {
 	HierarchyGroupService hierarchyGroupService;
 
 	@Autowired
-	CacheService cacheService;
+	RedisCacheService cacheService;
 
 	final String TENANT_ID = "tenant1";
 	final String ROOT_ID = "e1757bb8-8568-4135-8e67-778361b3329d";
