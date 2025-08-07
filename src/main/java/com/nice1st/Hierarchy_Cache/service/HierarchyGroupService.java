@@ -31,10 +31,10 @@ public class HierarchyGroupService {
 		return repository.findByTenantId(tenantId);
 	}
 
-	public Set<String> recursiveIds(String parentId) {
+	public Set<String> recursiveIds(String groupId) {
 		Set<String> ids = new HashSet<>();
 
-		repository.findById(parentId)
+		repository.findById(groupId)
 		  .ifPresent(hierarchyGroup -> {
 			  ids.add(hierarchyGroup.getId());
 			  recursiveIds(ids, hierarchyGroup);
@@ -51,15 +51,15 @@ public class HierarchyGroupService {
 		}
 	}
 
-	public Set<String> reBuild(String parentId) {
+	public Set<String> reBuild(String groupId) {
 		Set<String> ids = new HashSet<>();
 
-		repository.findById(parentId)
+		repository.findById(groupId)
 		  .ifPresent(hierarchyGroup -> {
 			  Map<String, List<HierarchyGroup>> map = getGroupedByParent(hierarchyGroup.getTenantId());
 
-			  ids.add(parentId);
-			  reBuild(map, ids, parentId);
+			  ids.add(groupId);
+			  reBuild(map, ids, groupId);
 		  });
 
 		return ids;
@@ -149,8 +149,7 @@ public class HierarchyGroupService {
 		String lockKey = cacheService.getLockKey(tenantId);
 		boolean locked = cacheService.tryLock(lockKey, Duration.ofMinutes(1), Duration.ofSeconds(30));
 		if (!locked) {
-			// todo legacy
-			throw new IllegalStateException("Another sync in progress for tenant: " + tenantId);
+			return reBuild(groupId);
 		}
 
 		try {
@@ -159,7 +158,7 @@ public class HierarchyGroupService {
 
 			if (events.isEmpty()) {
 				if (!validateCount(tenantId)) {
-					// todo cacheService.initialize();
+					cacheInitialize(tenantId);
 				}
 			} else {
 				processEvents(events, tenantId);
@@ -180,12 +179,16 @@ public class HierarchyGroupService {
 		return (countWithRoot - 1) == cachedCount;
 	}
 
+	private void cacheInitialize(String tenantId) {
+		cacheService.initialize(tenantId, getGroupedByParent(tenantId));
+	}
+
 	private void processEvents(List<HierarchyGroupEvent> events, String tenantId) {
 		for (HierarchyGroupEvent event : events) {
 			Set<String> parents = cacheService.getParents(tenantId, event.getTargetId());
 			boolean isValid = validationParent(parents, event);
 			if (!isValid) {
-				// todo cacheService.initialize();
+				cacheInitialize(tenantId);
 				break;
 			}
 
