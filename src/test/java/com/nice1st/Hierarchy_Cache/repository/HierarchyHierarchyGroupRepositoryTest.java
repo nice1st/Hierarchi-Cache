@@ -13,13 +13,13 @@ import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 @DataJpaTest
 class HierarchyHierarchyGroupRepositoryTest {
 
-	@Autowired
-	private HierarchyGroupRepository hierarchyGroupRepository;
+    @Autowired
+    private HierarchyGroupRepository hierarchyGroupRepository;
 
-	@Test
-	void getAllTest() {
-		List<HierarchyGroup> allHierarchyGroups = hierarchyGroupRepository.findAll();
+    @Test
+    void getAllTest() {
+        List<HierarchyGroup> allHierarchyGroups = hierarchyGroupRepository.findAll();
 
-		assertThat(allHierarchyGroups).hasSize(30000);
-	}
+        assertThat(allHierarchyGroups).hasSize(30000);
+    }
 }

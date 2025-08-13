@@ -17,11 +17,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HierarchyGroupController {
 
-	private final HierarchyGroupCommandService commandService;
-	private final HierarchyGroupReadService readService;
+    private final HierarchyGroupCommandService commandService;
+    private final HierarchyGroupReadService readService;
 
-	@GetMapping("/{groupId}/children")
-	public Set<String> getChildren(@PathVariable String groupId) {
-		return readService.read(groupId);
-	}
+    @GetMapping("/{groupId}/children")
+    public Set<String> getChildren(@PathVariable String groupId) {
+        return readService.read(groupId);
+    }
 }

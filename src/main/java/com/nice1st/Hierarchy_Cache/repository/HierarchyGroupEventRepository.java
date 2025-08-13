@@ -10,5 +10,5 @@ import com.nice1st.Hierarchy_Cache.domain.HierarchyGroupEvent;
 @Repository
 public interface HierarchyGroupEventRepository extends JpaRepository<HierarchyGroupEvent, Long> {
 
-	List<HierarchyGroupEvent> findByIdGreaterThanOrderById(Long id);
+    List<HierarchyGroupEvent> findByIdGreaterThanOrderById(Long id);
 }

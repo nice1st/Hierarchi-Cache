@@ -22,116 +22,116 @@ import com.nice1st.Hierarchy_Cache.service.HierarchyGroupReadService;
 @SpringBootTest
 class RedisCacheServiceTest {
 
-	@Autowired
-	private RedisConnectionFactory redisConnectionFactory;
+    @Autowired
+    private RedisConnectionFactory redisConnectionFactory;
 
-	@Autowired
-	CacheService cacheService;
+    @Autowired
+    CacheService cacheService;
 
-	@Autowired
-	HierarchyGroupReadService hierarchyGroupReadService;
+    @Autowired
+    HierarchyGroupReadService hierarchyGroupReadService;
 
-	final String TENANT_ID = "tenant1";
+    final String TENANT_ID = "tenant1";
 
-	final String ROOT_GROUP_ID = "e1757bb8-8568-4135-8e67-778361b3329d";
+    final String ROOT_GROUP_ID = "e1757bb8-8568-4135-8e67-778361b3329d";
 
-	final String DEPTH1_ID = "f28ff6e7-e556-4911-8271-587f6e9a2c8b";
-	final String DEPTH1_ID2 = "ef9ae61b-eb88-473f-8c3b-3f7b5b2afa8e";
+    final String DEPTH1_ID = "f28ff6e7-e556-4911-8271-587f6e9a2c8b";
+    final String DEPTH1_ID2 = "ef9ae61b-eb88-473f-8c3b-3f7b5b2afa8e";
 
-	final String DEPTH2_ID = "9b6067dd-9dbd-438a-bf73-0ae149b02e19";
+    final String DEPTH2_ID = "9b6067dd-9dbd-438a-bf73-0ae149b02e19";
 
-	final String DEPTH3_ID = "2591d205-2f62-43d4-8b1a-a6c10289a9b6";
+    final String DEPTH3_ID = "2591d205-2f62-43d4-8b1a-a6c10289a9b6";
 
-	@BeforeAll
-	void flush() {
-		try(var connection = redisConnectionFactory.getConnection()) {
-			connection.serverCommands().flushDb();
-		}
-	}
+    @BeforeAll
+    void flush() {
+        try(var connection = redisConnectionFactory.getConnection()) {
+            connection.serverCommands().flushDb();
+        }
+    }
 
-	void initialize() {
-		Map<String, List<HierarchyGroup>> groupedByParent = hierarchyGroupReadService.getGroupedByParent(TENANT_ID);
-		cacheService.initialize(TENANT_ID, groupedByParent);
-	}
+    void initialize() {
+        Map<String, List<HierarchyGroup>> groupedByParent = hierarchyGroupReadService.getGroupedByParent(TENANT_ID);
+        cacheService.initialize(TENANT_ID, groupedByParent);
+    }
 
-	boolean hasCached() {
-		long count = hierarchyGroupReadService.countByTenantId(TENANT_ID);
-		Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
+    boolean hasCached() {
+        long count = hierarchyGroupReadService.countByTenantId(TENANT_ID);
+        Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
 
-		return children != null && children.size() == (count - 1);
-	}
+        return children != null && children.size() == (count - 1);
+    }
 
-	@BeforeEach
-	void setUp() {
-		if (!hasCached()) {
-			initialize();
+    @BeforeEach
+    void setUp() {
+        if (!hasCached()) {
+            initialize();
 
-			Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
-			assertThat(children).hasSizeGreaterThanOrEqualTo(9999);
-		}
-	}
+            Set<String> children = cacheService.getChildren(TENANT_ID, ROOT_GROUP_ID);
+            assertThat(children).hasSizeGreaterThanOrEqualTo(9999);
+        }
+    }
 
-	@Test
-	void getChildren() {
-		// do nothing
-	}
+    @Test
+    void getChildren() {
+        // do nothing
+    }
 
-	@Test
-	void insert_and_delete() {
-		String id = insert();
-		delete(id);
-	}
+    @Test
+    void insert_and_delete() {
+        String id = insert();
+        delete(id);
+    }
 
-	String insert() {
-		final String ID = "test_id";
-		cacheService.createGroup(TENANT_ID, DEPTH2_ID, ID);
+    String insert() {
+        final String ID = "test_id";
+        cacheService.createGroup(TENANT_ID, DEPTH2_ID, ID);
 
-		Set<String> parents = cacheService.getParents(TENANT_ID, ID);
-		assertThat(parents).hasSizeGreaterThanOrEqualTo(1);
+        Set<String> parents = cacheService.getParents(TENANT_ID, ID);
+        assertThat(parents).hasSizeGreaterThanOrEqualTo(1);
 
-		Set<String> children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
-		assertThat(children).hasSizeGreaterThanOrEqualTo(0);
+        Set<String> children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
+        assertThat(children).hasSizeGreaterThanOrEqualTo(0);
 
-		return ID;
-	}
+        return ID;
+    }
 
-	void delete(String id) {
-		Set<String> children;
+    void delete(String id) {
+        Set<String> children;
 
-		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
-		assertThat(children).contains(id);
+        children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
+        assertThat(children).contains(id);
 
-		cacheService.deleteGroup(TENANT_ID, id);
+        cacheService.deleteGroup(TENANT_ID, id);
 
-		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
-		assertThat(children).doesNotContain(id);
-	}
+        children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
+        assertThat(children).doesNotContain(id);
+    }
 
-	@Test
-	void move() {
-		Set<String> parents;
-		Set<String> children;
+    @Test
+    void move() {
+        Set<String> parents;
+        Set<String> children;
 
-		parents = cacheService.getParents(TENANT_ID, DEPTH3_ID);
-		assertThat(parents).contains(DEPTH1_ID);
+        parents = cacheService.getParents(TENANT_ID, DEPTH3_ID);
+        assertThat(parents).contains(DEPTH1_ID);
 
-		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
-		assertThat(children).contains(DEPTH3_ID);
-		children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
-		assertThat(children).contains(DEPTH3_ID);
+        children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
+        assertThat(children).contains(DEPTH3_ID);
+        children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
+        assertThat(children).contains(DEPTH3_ID);
 
-		cacheService.moveGroup(TENANT_ID, DEPTH1_ID2, DEPTH2_ID);
-		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
-		assertThat(children).doesNotContain(DEPTH3_ID);
+        cacheService.moveGroup(TENANT_ID, DEPTH1_ID2, DEPTH2_ID);
+        children = cacheService.getChildren(TENANT_ID, DEPTH1_ID);
+        assertThat(children).doesNotContain(DEPTH3_ID);
 
-		children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
-		assertThat(children).contains(DEPTH3_ID);
-		children = cacheService.getChildren(TENANT_ID, DEPTH1_ID2);
-		assertThat(children).contains(DEPTH2_ID);
-		assertThat(children).contains(DEPTH3_ID);
+        children = cacheService.getChildren(TENANT_ID, DEPTH2_ID);
+        assertThat(children).contains(DEPTH3_ID);
+        children = cacheService.getChildren(TENANT_ID, DEPTH1_ID2);
+        assertThat(children).contains(DEPTH2_ID);
+        assertThat(children).contains(DEPTH3_ID);
 
-		parents = cacheService.getParents(TENANT_ID, DEPTH3_ID);
-		assertThat(parents).doesNotContain(DEPTH1_ID);
-		assertThat(parents).contains(DEPTH1_ID2);
-	}
+        parents = cacheService.getParents(TENANT_ID, DEPTH3_ID);
+        assertThat(parents).doesNotContain(DEPTH1_ID);
+        assertThat(parents).contains(DEPTH1_ID2);
+    }
 }

@@ -15,24 +15,24 @@ import com.nice1st.Hierarchy_Cache.cache.redis.RedisLockService;
 @Configuration
 public class RedisConfig {
 
-	@Bean
-	public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
-		RedisTemplate<String, String> template = new RedisTemplate<>();
-		template.setConnectionFactory(connectionFactory);
+    @Bean
+    public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
 
-		template.setKeySerializer(new StringRedisSerializer());
-		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 
-		return template;
-	}
+        return template;
+    }
 
-	@Bean
-	public CacheService cacheService(RedisTemplate<String, String> redisTemplate) {
-		return new RedisCacheService(redisTemplate);
-	}
+    @Bean
+    public CacheService cacheService(RedisTemplate<String, String> redisTemplate) {
+        return new RedisCacheService(redisTemplate);
+    }
 
-	@Bean
-	public LockService lockService(RedisTemplate<String, String> redisTemplate) {
-		return new RedisLockService(redisTemplate);
-	}
+    @Bean
+    public LockService lockService(RedisTemplate<String, String> redisTemplate) {
+        return new RedisLockService(redisTemplate);
+    }
 }

@@ -1,0 +1,13 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.md]
+# 마크다운은 공백 트림 비활성화 (표/리스트 깨짐 방지)
+trim_trailing_whitespace = false
