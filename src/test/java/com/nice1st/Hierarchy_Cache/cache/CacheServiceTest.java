@@ -1,4 +1,4 @@
-package com.nice1st.Hierarchy_Cache.cache.redis;
+package com.nice1st.Hierarchy_Cache.cache;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -14,15 +14,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-import com.nice1st.Hierarchy_Cache.cache.CacheService;
 import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 import com.nice1st.Hierarchy_Cache.service.HierarchyGroupReadService;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest
-class RedisCacheServiceTest {
+class CacheServiceTest {
 
-    @Autowired
+    @Autowired(required = false)
     private RedisConnectionFactory redisConnectionFactory;
 
     @Autowired
@@ -44,8 +43,10 @@ class RedisCacheServiceTest {
 
     @BeforeAll
     void flush() {
-        try(var connection = redisConnectionFactory.getConnection()) {
-            connection.serverCommands().flushDb();
+        if (redisConnectionFactory != null) {
+            try(var connection = redisConnectionFactory.getConnection()) {
+                connection.serverCommands().flushDb();
+            }
         }
     }
 
