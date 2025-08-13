@@ -20,7 +20,7 @@ public interface CacheService {
 
 	void createGroup(String tenantId, String parentId, String id);
 
-	void moveGroup(String tenantId, String targetId, String newParentId);
+    void moveGroup(String tenantId, String newParentId, String targetId);
 
 	Set<String> getParents(String tenantId, String groupId);
 

@@ -130,7 +130,7 @@ public class RedisCacheService implements CacheService {
 	}
 
 	@Override
-	public void moveGroup(String tenantId, String newParentId, String targetId) {
+    public void moveGroup(String tenantId, String newParentId, String targetId) {
 		VO target = find(tenantId, targetId);
 		VO parent = find(tenantId, newParentId);
 		// 이전 parents 의 children 제거
@@ -157,17 +157,6 @@ public class RedisCacheService implements CacheService {
 			add(tenantId, parentId, Collections.emptySet(), Collections.singleton(target.getId()));
 			add(tenantId, parentId, Collections.emptySet(), target.getChildren());
 		}
-
-		Set<String> oldParents = redisTemplate.opsForSet().members(getParentsKey(tenantId, targetId));
-		if (oldParents != null) {
-			for (String oldParentId : oldParents) {
-				redisTemplate.opsForSet().remove(getChildrenKey(tenantId, oldParentId), targetId);
-			}
-		}
-
-		redisTemplate.delete(getParentsKey(tenantId, targetId));
-		redisTemplate.opsForSet().add(getParentsKey(tenantId, targetId), newParentId);
-		redisTemplate.opsForSet().add(getChildrenKey(tenantId, newParentId), targetId);
 	}
 
 	@Override
