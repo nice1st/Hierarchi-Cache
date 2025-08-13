@@ -98,7 +98,7 @@ class HierarchyCacheApplicationTests {
     }
 
     @Test
-    void 락_미획득_시_DB_조회_fallback_검증() throws Exception {
+    void 락_미획득_시_DB_조회_fallback_검증() {
         // 락 점유 (직접 Redis에 락 key 삽입)
         String lockKey = lockService.getLockKey(TENANT_ID);
         redisTemplate.opsForValue().setIfAbsent(lockKey, "test-lock", java.time.Duration.ofMinutes(1));
