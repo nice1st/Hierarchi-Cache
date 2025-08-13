@@ -22,6 +22,8 @@ public class HierarchyGroupEvent {
     @Id
     private Long id;
 
+    private String tenantId;
+
     private String targetId;
 
     private String fromId;

@@ -25,6 +25,7 @@ public class HierarchyGroupCommandService {
         HierarchyGroup hierarchyGroup = repository.save(HierarchyGroup.newInstance(parent));
         eventRepository.save(
           HierarchyGroupEvent.builder()
+            .tenantId(parent.getTenantId())
             .targetId(hierarchyGroup.getId())
             .toId(hierarchyGroup.getParentId())
             .build()
@@ -41,6 +42,7 @@ public class HierarchyGroupCommandService {
         repository.delete(hierarchyGroup);
         eventRepository.save(
           HierarchyGroupEvent.builder()
+            .tenantId(hierarchyGroup.getTenantId())
             .targetId(hierarchyGroup.getId())
             .fromId(hierarchyGroup.getParentId())
             .build()
@@ -58,6 +60,7 @@ public class HierarchyGroupCommandService {
         hierarchyGroup.move(parent);
         eventRepository.save(
           HierarchyGroupEvent.builder()
+            .tenantId(hierarchyGroup.getTenantId())
             .targetId(hierarchyGroup.getId())
             .fromId(fromId)
             .toId(hierarchyGroup.getParentId())

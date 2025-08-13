@@ -101,7 +101,7 @@ public class HierarchyGroupReadService {
             }
 
             String cursor = cacheService.getCursor(tenantId);
-            List<HierarchyGroupEvent> events = eventRepository.findByIdGreaterThanOrderById(Long.parseLong(cursor));
+            List<HierarchyGroupEvent> events = eventRepository.findByTenantIdAndIdGreaterThanOrderById(tenantId, Long.parseLong(cursor));
             if (!hasInitialized(tenantId)) {
                 cacheInitialize(tenantId);
             } else {
