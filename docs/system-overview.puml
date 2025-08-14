@@ -1,0 +1,38 @@
+@startuml
+skinparam monochrome true
+skinparam defaultTextAlignment left
+skinparam shadowing false
+
+actor Client
+node "API (Spring Boot)" as API
+component "HierarchyGroupReadService" as ReadSvc
+component "HierarchyGroupCommandService" as CmdSvc
+component "CacheService\n(Redis/InMemory)" as Cache
+component "LockService\n(Redis/InMemory)" as Lock
+node "JPA Repositories" as JPA
+cloud "Redis" as Redis
+database "RDBMS (H2/Prod DB)" as DB
+
+Client --> API : HTTP
+API --> ReadSvc
+API --> CmdSvc
+
+ReadSvc --> Cache : getChildren()/parents
+ReadSvc --> Cache : initialize()/create/move/delete
+ReadSvc --> Cache : getCursor()/updateCursor()
+ReadSvc --> Lock : tryLock()/unlock()
+
+CmdSvc --> JPA : HierarchyGroupRepository
+CmdSvc --> JPA : HierarchyGroupEventRepository
+
+JPA --> DB
+Cache ..> Redis : in prod profile
+Lock  ..> Redis : in prod profile
+
+note right of Cache
+  Profile
+  - local: InMemory*
+  - !local: Redis*
+end note
+
+@enduml

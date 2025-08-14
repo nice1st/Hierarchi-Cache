@@ -1,0 +1,20 @@
+@startuml
+skinparam monochrome true
+skinparam defaultTextAlignment left
+
+rectangle "Tenant: {tenant}" {
+  frame "Keyspace: {tenant}:group" {
+    collections "{groupId}:parents" as Parents
+    collections "{groupId}:children" as Children
+    queue "cursor" as Cursor
+    database "lock" as Lock
+  }
+}
+
+note bottom
+- Parents: 조상 ID 집합
+- Children: 모든 자손 ID 집합
+- Cursor: 마지막 처리 이벤트 ID
+- Lock: 테넌트 단위 분산락 키
+end note
+@enduml
