@@ -4,9 +4,9 @@ import java.time.Duration;
 
 public interface LockService {
 
-	String getLockKey(String tenantId);
+    String getLockKey(String tenantId);
 
-	boolean tryLock(String key, Duration ttl, Duration maxWait);
+    boolean tryLock(String key, Duration ttl, Duration maxWait);
 
-	void unlock(String key);
+    void unlock(String key);
 }

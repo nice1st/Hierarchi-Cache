@@ -1,0 +1,29 @@
+@startuml
+skinparam monochrome true
+skinparam defaultTextAlignment left
+
+actor Client
+participant "API (Read)" as API
+participant "LockService" as Lock
+participant "CacheService" as Cache
+participant "EventRepo" as Repo
+
+Client -> API: GET /groups/{id}/children
+API -> Lock: tryLock(tenant)
+alt lock acquired
+  API -> Cache: getCursor(tenant)
+  API -> Repo: findEventsAfter(cursor, tenant)
+  alt cache not initialized
+    API -> Cache: initialize(tenant, groupedByParent)
+  else events exist
+    API -> Cache: apply(event...) // create/move/delete
+  end
+  API -> Cache: updateCursor(tenant, lastEvent)
+  API -> Cache: getChildren(tenant, groupId)
+  API --> Client: children (descendants)
+  API -> Lock: unlock(tenant)
+else lock failed
+  API -> API: rebuildFromDb(groupId)
+  API --> Client: children (fallback)
+end
+@enduml

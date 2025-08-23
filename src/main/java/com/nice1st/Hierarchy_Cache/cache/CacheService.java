@@ -8,23 +8,23 @@ import com.nice1st.Hierarchy_Cache.domain.HierarchyGroup;
 
 public interface CacheService {
 
-	String getRootGroup();
+    String getRootGroup();
 
-	String getCursor(String tenantId);
+    String getCursor(String tenantId);
 
-	void updateCursor(String tenantId, Long tsid);
+    void updateCursor(String tenantId, Long tsid);
 
-	void initialize(String tenantId, Map<String, List<HierarchyGroup>> groupByParentId);
+    void initialize(String tenantId, Map<String, List<HierarchyGroup>> groupByParentId);
 
-	void deleteGroup(String tenantId, String groupId);
+    void deleteGroup(String tenantId, String groupId);
 
-	void createGroup(String tenantId, String parentId, String id);
+    void createGroup(String tenantId, String parentId, String id);
 
-	void moveGroup(String tenantId, String targetId, String newParentId);
+    void moveGroup(String tenantId, String newParentId, String targetId);
 
-	Set<String> getParents(String tenantId, String groupId);
+    Set<String> getParents(String tenantId, String groupId);
 
-	Set<String> getChildren(String tenantId, String groupId);
+    Set<String> getChildren(String tenantId, String groupId);
 
-	boolean hasCached(String tenantId, String groupId);
+    boolean hasCached(String tenantId, String groupId);
 }

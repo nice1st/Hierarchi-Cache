@@ -14,55 +14,58 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HierarchyGroupCommandService {
 
-	private final HierarchyGroupRepository repository;
-	private final HierarchyGroupEventRepository eventRepository;
+    private final HierarchyGroupRepository repository;
+    private final HierarchyGroupEventRepository eventRepository;
 
-	@Transactional
-	public HierarchyGroup create(String parentId) {
-		HierarchyGroup parent = repository.findById(parentId)
-		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+    @Transactional
+    public HierarchyGroup create(String parentId) {
+        HierarchyGroup parent = repository.findById(parentId)
+          .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 
-		HierarchyGroup hierarchyGroup = repository.save(HierarchyGroup.newInstance(parent));
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.toId(hierarchyGroup.getParentId())
-			.build()
-		);
+        HierarchyGroup hierarchyGroup = repository.save(HierarchyGroup.newInstance(parent));
+        eventRepository.save(
+          HierarchyGroupEvent.builder()
+            .tenantId(parent.getTenantId())
+            .targetId(hierarchyGroup.getId())
+            .toId(hierarchyGroup.getParentId())
+            .build()
+        );
 
-		return hierarchyGroup;
-	}
+        return hierarchyGroup;
+    }
 
-	@Transactional
-	public void remove(String id) {
-		HierarchyGroup hierarchyGroup = repository.findById(id)
-		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
+    @Transactional
+    public void remove(String id) {
+        HierarchyGroup hierarchyGroup = repository.findById(id)
+          .orElseThrow(() -> new IllegalArgumentException("Not found"));
 
-		repository.delete(hierarchyGroup);
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.fromId(hierarchyGroup.getParentId())
-			.build()
-		);
-	}
+        repository.delete(hierarchyGroup);
+        eventRepository.save(
+          HierarchyGroupEvent.builder()
+            .tenantId(hierarchyGroup.getTenantId())
+            .targetId(hierarchyGroup.getId())
+            .fromId(hierarchyGroup.getParentId())
+            .build()
+        );
+    }
 
-	@Transactional
-	public HierarchyGroup move(String id, String parentId) {
-		HierarchyGroup hierarchyGroup = repository.findById(id)
-		  .orElseThrow(() -> new IllegalArgumentException("Not found"));
-		HierarchyGroup parent = repository.findById(parentId)
-		  .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+    @Transactional
+    public HierarchyGroup move(String id, String parentId) {
+        HierarchyGroup hierarchyGroup = repository.findById(id)
+          .orElseThrow(() -> new IllegalArgumentException("Not found"));
+        HierarchyGroup parent = repository.findById(parentId)
+          .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
 
-		String fromId = hierarchyGroup.getParentId();
-		hierarchyGroup.move(parent);
-		eventRepository.save(
-		  HierarchyGroupEvent.builder()
-			.targetId(hierarchyGroup.getId())
-			.fromId(fromId)
-			.toId(hierarchyGroup.getParentId())
-			.build()
-		);
-		return hierarchyGroup;
-	}
+        String fromId = hierarchyGroup.getParentId();
+        hierarchyGroup.move(parent);
+        eventRepository.save(
+          HierarchyGroupEvent.builder()
+            .tenantId(hierarchyGroup.getTenantId())
+            .targetId(hierarchyGroup.getId())
+            .fromId(fromId)
+            .toId(hierarchyGroup.getParentId())
+            .build()
+        );
+        return hierarchyGroup;
+    }
 }

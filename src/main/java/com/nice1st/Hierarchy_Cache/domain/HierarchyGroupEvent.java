@@ -19,35 +19,37 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class HierarchyGroupEvent {
 
-	@Id
-	private Long id;
+    @Id
+    private Long id;
 
-	private String targetId;
+    private String tenantId;
 
-	private String fromId;
+    private String targetId;
 
-	private String toId;
+    private String fromId;
 
-	@PrePersist
-	public void assignId() {
-		if (id == null) {
-			id = Tsid.fast().toLong();
-		}
-	}
+    private String toId;
 
-	public EventType getType() {
-		if (fromId == null) {
-			return EventType.CREATE;
-		}
+    @PrePersist
+    public void assignId() {
+        if (id == null) {
+            id = Tsid.fast().toLong();
+        }
+    }
 
-		if (toId == null) {
-			return EventType.DELETE;
-		}
+    public EventType getType() {
+        if (fromId == null) {
+            return EventType.CREATE;
+        }
 
-		return EventType.UPDATE;
-	}
+        if (toId == null) {
+            return EventType.DELETE;
+        }
 
-	public enum EventType {
-		CREATE, DELETE, UPDATE
-	}
+        return EventType.UPDATE;
+    }
+
+    public enum EventType {
+        CREATE, DELETE, UPDATE
+    }
 }

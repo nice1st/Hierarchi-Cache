@@ -21,32 +21,32 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class HierarchyGroup {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
-	@Column
-	private String tenantId;
+    @Column
+    private String tenantId;
 
-	@ManyToOne
-	@JoinColumn(name = "parent_id")
-	private HierarchyGroup parent;
+    @ManyToOne
+    @JoinColumn(name = "parent_id")
+    private HierarchyGroup parent;
 
-	@OneToMany(mappedBy = "parent")
-	private List<HierarchyGroup> children = new ArrayList<>();
+    @OneToMany(mappedBy = "parent")
+    private List<HierarchyGroup> children = new ArrayList<>();
 
-	public void move(HierarchyGroup parent) {
-		this.parent = parent;
-	}
+    public void move(HierarchyGroup parent) {
+        this.parent = parent;
+    }
 
-	public static HierarchyGroup newInstance(HierarchyGroup parent) {
-		HierarchyGroup hierarchyGroup = new HierarchyGroup();
-		hierarchyGroup.tenantId = parent.getTenantId();
-		hierarchyGroup.parent = parent;
-		return hierarchyGroup;
-	}
+    public static HierarchyGroup newInstance(HierarchyGroup parent) {
+        HierarchyGroup hierarchyGroup = new HierarchyGroup();
+        hierarchyGroup.tenantId = parent.getTenantId();
+        hierarchyGroup.parent = parent;
+        return hierarchyGroup;
+    }
 
-	public String getParentId() {
-		return parent != null ? parent.getId() : null;
-	}
+    public String getParentId() {
+        return parent != null ? parent.getId() : null;
+    }
 }

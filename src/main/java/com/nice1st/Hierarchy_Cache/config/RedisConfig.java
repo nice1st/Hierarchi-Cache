@@ -2,6 +2,7 @@ package com.nice1st.Hierarchy_Cache.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -13,26 +14,27 @@ import com.nice1st.Hierarchy_Cache.cache.redis.RedisCacheService;
 import com.nice1st.Hierarchy_Cache.cache.redis.RedisLockService;
 
 @Configuration
+@Profile("!local")
 public class RedisConfig {
 
-	@Bean
-	public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
-		RedisTemplate<String, String> template = new RedisTemplate<>();
-		template.setConnectionFactory(connectionFactory);
+    @Bean
+    public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
 
-		template.setKeySerializer(new StringRedisSerializer());
-		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 
-		return template;
-	}
+        return template;
+    }
 
-	@Bean
-	public CacheService cacheService(RedisTemplate<String, String> redisTemplate) {
-		return new RedisCacheService(redisTemplate);
-	}
+    @Bean
+    public CacheService cacheService(RedisTemplate<String, String> redisTemplate) {
+        return new RedisCacheService(redisTemplate);
+    }
 
-	@Bean
-	public LockService lockService(RedisTemplate<String, String> redisTemplate) {
-		return new RedisLockService(redisTemplate);
-	}
+    @Bean
+    public LockService lockService(RedisTemplate<String, String> redisTemplate) {
+        return new RedisLockService(redisTemplate);
+    }
 }
