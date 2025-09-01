@@ -87,5 +87,3 @@ curl http://localhost:8080/api/groups/<ROOT_GROUP_ID>/children
 - 애플리케이션: Spring Boot 3.5, Java 21, Spring Data JPA(H2), Spring Data Redis, Lombok, TSID
 - 주요 컴포넌트: `HierarchyGroup(Read/Command)Service`, `RedisCacheService`, `RedisLockService`
 - 데이터 소스: `data.sql`로 초기 데이터 로드(테스트/데모 목적)
-
-필요 시 운영환경용 설정/모니터링/메트릭 예시를 추가해 드릴 수 있습니다.
